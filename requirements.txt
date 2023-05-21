@@ -1,0 +1,10 @@
+Flask==2.3.2
+Flask_Cors==3.0.10
+mediapipe==0.10.0
+numpy==1.23.5
+opencv_contrib_python==4.7.0.72
+opencv_python==4.7.0.72
+spacy==3.5.2
+tensorflow==2.12.0
+tensorflow_cpu==2.12.0
+textblob==0.17.1
