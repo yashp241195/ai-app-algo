@@ -1,15 +1,20 @@
 from flask import Flask, request, jsonify, render_template
+from textblob import TextBlob
 from flask_cors import CORS
+import spacy
 import cv2
 import numpy as np
 import base64
 import time
 import random
 import string
-from textblob import TextBlob
-import spacy
 import tensorflow as tf
 import mediapipe as mp
+
+
+
+app = Flask(__name__)
+CORS(app, origins='*')
 
 
 nlp = None
@@ -20,25 +25,21 @@ def load_detect_face():
     global mp_face_detection
     mp_face_detection = mp.solutions.face_detection
 
-
-def load_nlp_model():
-    global nlp
-    nlp = spacy.load('en_core_web_sm')
-
 def load_tflite_model():
     global interpreter
     interpreter = tf.lite.Interpreter(model_path='./models/nsfw_saved_model_quantized.tflite')
     interpreter.allocate_tensors()
 
 
-app = Flask(__name__)
-CORS(app, origins='*')
+def load_nlp_model():
+    global nlp
+    nlp = spacy.load('en_core_web_sm')
+
 
 
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/analyze/image', methods=['POST'])
 def upload_image():
@@ -121,6 +122,8 @@ def upload_image():
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
 
+
+
 @app.route('/analyze/text/job', methods=['POST'])
 def upload_text_job():
     try:
@@ -129,14 +132,9 @@ def upload_text_job():
         skills_provided = request.form['skills_provided']
         job_description = request.form['job_description']
         job_descriptionTb = TextBlob(job_description)
-        doc = nlp(job_description)
-        skills_extracted = []
-        for entity in doc.ents:
-            if entity.label_ in ["ORG", "TECH", "SKILL"]:
-                skills_extracted.append(entity.text)
 
-        skills_similarity_score = nlp(', '.join(skills_extracted)).similarity(nlp(skills_provided))
-        
+        skills_similarity_score = nlp(job_description.lower()).similarity(nlp(skills_provided.lower()))
+
         response = jsonify({
             'job_description':{
                 'sentiment':{
@@ -145,7 +143,6 @@ def upload_text_job():
                 },
                 'skills':{
                     'skills_provided': skills_provided,
-                    'skills_extracted': skills_extracted,
                     'skills_similarity_score': skills_similarity_score,
                 },
             },
@@ -156,7 +153,8 @@ def upload_text_job():
     except Exception as e:
         response = jsonify({'status': 'error', 'message': str(e)})
         response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
+        return response    
+
 
 @app.route('/analyze/text/post', methods=['POST'])
 def upload_text_post():
@@ -196,6 +194,7 @@ def upload_text_post():
 
 
 
-
 if __name__ == '__main__':
-    app.run(port=5000, threaded=True)
+    app.run(port=5000,debug=False,threaded=True)
+
+
