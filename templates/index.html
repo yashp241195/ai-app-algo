@@ -1,142 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>AI Testing</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Upload & Text Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            background: #fff;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        input[type="file"],
+        textarea {
+            display: block;
+            margin-bottom: 10px;
+            width: 100%;
+            padding: 10px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #555;
+        }
+    </style>
 </head>
 <body>
-    <h2>AI Testing</h2>
-    <div>
-    </div>
-    <h3>Images</h3>
-    <form id="upload-image-form">
-        <input type="file" name="image" id="file-input">
-        <button type="submit">Upload</button>
-    </form>
-    <div id="image-container">
-
-    </div>
-    <div id="image-text-output"></div>
-    <h3>Text</h3>
-    <h4>workoso.in</h4>
-    <div>
-        <textarea placeholder="skills provided" id="skills_provided" name="skills_provided" rows="1" cols="50"></textarea>
-        <br/><textarea placeholder="job description" id="job_description" name="job_description" rows="4" cols="50"></textarea>
-    </div>
-    <br/>
-    <div>
-        <div id="text-container-1"></div>
-        <br>
-        <form id="upload-text-form-1">
-            <button type="submit">Analyze Job</button>
+    <div class="container">
+        <h1>Upload an Image</h1>
+        <form action="/upload?response_type=html" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*" required>
+            <button type="submit">Upload</button>
         </form>
-        <br>
-    </div>
-    <h4>rawopinion.in</h4>
-    <div>
-        <textarea placeholder="parent post or comment" id="parent_post_or_comment" name="parent_post_or_comment" rows="3" cols="50"></textarea>
-        <br/><textarea placeholder="child comment" id="child_comment" name="child_comment" rows="2" cols="50"></textarea>
-    </div>
-    <br/>
-    <div>
-        <div id="text-container-2"></div>
-        <br>
-        <form id="upload-text-form-2">
-            <button type="submit">Analyze Post</button>
+        <p>Allowed file types: JPG, JPEG, PNG, GIF</p>
+        {% if results %}
+        <h2>Image Analysis Results:</h2>
+        <pre>{{ results | tojson(indent=4) }}</pre>
+        {% endif %}
+
+        <h1>Text Analysis with Google Gemini</h1>
+        <form action="/analyze_text?response_type=html" method="post">
+            <textarea name="query" rows="4" cols="50" placeholder="Enter text here...">{{ query or '' }}</textarea><br><br>
+            <button type="submit">Analyze</button>
         </form>
-        <br>
+        {% if result %}
+        <h2>Text Analysis Result:</h2>
+        <p>{{ result  }}</p>
+        {% endif %}
     </div>
-    {% block javascript %}
-
-    <script>
-        const imageForm = document.getElementById('upload-image-form');
-        const fileInput = document.getElementById('file-input');
-        const imageContainer = document.getElementById('image-container');
-        let imageTextOutputContainer = document.getElementById('image-text-output');
-
-        imageForm.addEventListener('submit', (event) => {
-            event.preventDefault();
-            
-            const formData = new FormData();
-            formData.append('image', fileInput.files[0]);
-
-            fetch('http://localhost:5000/analyze/image', {
-                method: 'POST',
-                body: formData,
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data)
-                const blankImageURL = "{{ url_for('static', filename='black.jpg') }}";
-                const img = new Image();
-                img.src = data.image?'data:image/jpeg;base64,' + data.image:blankImageURL;
-                img.width = 200;
-                imageContainer.appendChild(img);
-                const textdata = {
-                    face_detection:[{
-                        'score':data.face_detection[0].score,
-                        'relative_bounding_box':data.face_detection[0].relative_bounding_box
-                    }], 
-                    nude_detection:data.nude_detection,
-                    filename:data.filename,
-                } 
-                imageTextOutputContainer.innerHTML += "<div><pre>"+JSON.stringify(textdata,null,2)+"</pre></div>"
-            })
-            .catch(error => console.error(error));
-        });
-
-        const formText1 = document.getElementById('upload-text-form-1');
-        const formText2 = document.getElementById('upload-text-form-2');
-
-        formText1.addEventListener('submit', (event) => {
-            event.preventDefault();
-            
-            const formData = new FormData();
-            
-            formData.append('skills_provided', document.getElementById('skills_provided').value);
-            formData.append('job_description', document.getElementById('job_description').value);
-
-            let textContainer = document.getElementById('text-container-1');
-
-            fetch('http://localhost:5000/analyze/text/job', {
-                method: 'POST',
-                body: formData,
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data)
-                textContainer.innerHTML += "<div><pre>"+
-                    JSON.stringify(data,null,2)+"</pre></div>"
-            })
-            .catch(error => console.error(error));
-        })
-
-        formText2.addEventListener('submit', (event) => {
-            event.preventDefault();
-            
-            const formData = new FormData();
-            
-            formData.append('parent_post_or_comment', document.getElementById('parent_post_or_comment').value);
-            formData.append('child_comment', document.getElementById('child_comment').value);
-
-            let textContainer = document.getElementById('text-container-2');
-
-            fetch('http://localhost:5000/analyze/text/post', {
-                method: 'POST',
-                body: formData,
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data)
-
-                textContainer.innerHTML += "<div><pre>"+
-                    JSON.stringify(data,null,2)+"</pre></div>"
-            })
-            .catch(error => console.error(error));
-        })
-
-
-    </script>
-    {% endblock %}
-
 </body>
 </html>
